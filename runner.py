@@ -6,12 +6,13 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import numpy as np
 
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+from tensorflow.keras.utils import plot_model
+from keras.models import load_model
 
 from data_generator import DataGenerator
 from data_preprocessor import DataPreprocessor
 from data_visualizer import DataVisualizer
 from model_trainer import ModelTrainer
-
 
 def classify(model: ClassifierMixin, model_name: str, x_train, y_train, x_test, y_test):
     model.fit(x_train, y_train)
@@ -44,60 +45,113 @@ data_preprocessor.create_features_file(feature_file, augment_features=False)
 augmented_feature_file = 'features_augmented.csv'
 data_preprocessor.create_features_file(augmented_feature_file, augment_features=True)
 
-# # Classification with Machine Learning on Augmented features
-# # LabelEncode, split and normalize the data
-# x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(augmented_feature_file)
-# print("Classification using augmented features")
-# classify_with_machine_learning(x_train, y_train, x_test, y_test)
 
-# # Classification with Machine Learning on Regular features
-# # LabelEncode, split and normalize the data
-# x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file)
-# print("Classification using normal features")
-# classify_with_machine_learning(x_train, y_train, x_test, y_test)
+# Classification with Machine Learning on Augmented features
+# LabelEncode, split and normalize the data
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(augmented_feature_file)
+print("Classification using augmented features")
+classify_with_machine_learning(x_train, y_train, x_test, y_test)
 
-# # Classification with Multilayer Perceptron on Regular features
-# x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file, one_hot_encode=True)
-# print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-# mlp = ModelTrainer(x_train, y_train, x_test, y_test)
-# mlp.build_mlp()
-# mlp.train_model(num_epochs=50)
-# mlp.classify()
-# mlp.plot_loss_accuracy()
 
-# # Classification with Multilayer Perceptron on Augmented features
-# x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(augmented_feature_file, one_hot_encode=True)
-# print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-# print(x_train.mean(), y_train.mean(), x_test.mean(), y_test.mean())
-# print(x_train.std(), y_train.std(), x_test.std(), y_test.std())
-# mlp = ModelTrainer(x_train, y_train, x_test, y_test)
-# mlp.build_mlp()
-# mlp.train_model(num_epochs=50)
-# mlp.classify()
-# mlp.plot_loss_accuracy()
+# Classification with Machine Learning on Regular features
+# LabelEncode, split and normalize the data
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file)
+print("Classification using normal features")
+classify_with_machine_learning(x_train, y_train, x_test, y_test)
 
-# # Classification with 1D CNN on Regular features
-# x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file, one_hot_encode=True)
-# print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-# x_train = np.expand_dims(x_train, axis=2)
-# x_test = np.expand_dims(x_test, axis=2)
-# cnn = ModelTrainer(x_train, y_train, x_test, y_test)
-# rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
-# earlyStopping = EarlyStopping(patience=10, restore_best_weights=True)
-# cnn.build_cnn()
-# cnn.train_model(num_epochs=100, callbacks=[earlyStopping, rlrp])
-# cnn.classify()
-# cnn.plot_loss_accuracy()
+
+# Classification with Multilayer Perceptron on Regular features
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file, one_hot_encode=True)
+mlp = ModelTrainer(x_train, y_train, x_test, y_test)
+mlp.build_mlp()
+mlp.train_model(num_epochs=50)
+mlp.classify()
+mlp.plot_loss_accuracy()
+
+
+# Classification with Multilayer Perceptron on Augmented features
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(augmented_feature_file, one_hot_encode=True)
+mlp = ModelTrainer(x_train, y_train, x_test, y_test)
+mlp.build_mlp()
+mlp.train_model(num_epochs=50)
+mlp.classify()
+mlp.plot_loss_accuracy()
+
+
+# Classification with 1D CNN on Regular features
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(feature_file, one_hot_encode=True)
+x_train = np.expand_dims(x_train, axis=2)
+x_test = np.expand_dims(x_test, axis=2)
+cnn = ModelTrainer(x_train, y_train, x_test, y_test)
+rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
+earlyStopping = EarlyStopping(patience=10, restore_best_weights=True)
+cnn.build_cnn1D()
+cnn.train_model(num_epochs=100, callbacks=[earlyStopping, rlrp])
+cnn.classify()
+cnn.plot_loss_accuracy()
+
 
 # Classification with 1D CNN on Augmented features
 x_train, y_train, x_test, y_test = data_preprocessor.prepare_training_data(augmented_feature_file, one_hot_encode=True)
-print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
 x_train = np.expand_dims(x_train, axis=2)
 x_test = np.expand_dims(x_test, axis=2)
 cnn = ModelTrainer(x_train, y_train, x_test, y_test)
 rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
 earlyStopping = EarlyStopping(patience=20, restore_best_weights=True)
-cnn.build_cnn()
+cnn.build_cnn1D()
 cnn.train_model(num_epochs=100, callbacks=[earlyStopping, rlrp])
 cnn.classify()
 cnn.plot_loss_accuracy()
+
+
+# Classification with 2D CNN on Regular features
+regular_mfcc_file = 'regular_mfcc.pkl'
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_mfcc_data(regular_mfcc_file, augment_features=False)
+x_train = np.expand_dims(x_train, axis=-1)
+x_test = np.expand_dims(x_test, axis=-1)
+cnn = ModelTrainer(x_train, y_train, x_test, y_test)
+rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
+earlyStopping = EarlyStopping(patience=10, restore_best_weights=True)
+cnn.build_cnn2D()
+cnn.train_model(num_epochs=100, callbacks=[earlyStopping, rlrp])
+cnn.classify()
+cnn.plot_loss_accuracy()
+
+
+# Classification with 2D CNN on Augmented features
+augmented_mfcc_file = 'augmented_mfcc.pkl'
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_mfcc_data(augmented_mfcc_file, augment_features=True)
+x_train = np.expand_dims(x_train, axis=-1)
+x_test = np.expand_dims(x_test, axis=-1)
+cnn = ModelTrainer(x_train, y_train, x_test, y_test)
+rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
+earlyStopping = EarlyStopping(patience=10, restore_best_weights=True)
+cnn.build_cnn2D()
+cnn.train_model(num_epochs=100, callbacks=[earlyStopping, rlrp])
+cnn.classify()
+cnn.plot_loss_accuracy()
+
+
+regular_mfcc_file = 'regular_mfcc.pkl'
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_mfcc_data(regular_mfcc_file)
+print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
+lstm = ModelTrainer(x_train, y_train, x_test, y_test)
+rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
+earlyStopping = EarlyStopping(patience=20, restore_best_weights=True)
+lstm.build_lstm()
+lstm.train_model(num_epochs=100, callbacks=[rlrp, earlyStopping])
+lstm.classify()
+lstm.plot_loss_accuracy()
+
+
+augmented_mfcc_file = 'augmented_mfcc.pkl'
+x_train, y_train, x_test, y_test = data_preprocessor.prepare_mfcc_data(augmented_mfcc_file, augment_features=True)
+print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
+lstm = ModelTrainer(x_train, y_train, x_test, y_test)
+rlrp = ReduceLROnPlateau(factor=0.2, verbose=0, patience=4, min_lr=0.000001)
+earlyStopping = EarlyStopping(patience=20, restore_best_weights=True)
+lstm.build_lstm()
+lstm.train_model(num_epochs=100, callbacks=[rlrp, earlyStopping])
+lstm.classify()
+lstm.plot_loss_accuracy()
+

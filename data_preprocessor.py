@@ -2,9 +2,12 @@ import numpy as np
 import pandas as pd
 import librosa
 from pathlib import Path
+import json
 
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.model_selection import train_test_split
+
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 class DataPreprocessor():
     '''Takes the dataframe containing the emotions, actor_id, sex and filenames and
@@ -33,8 +36,9 @@ class DataPreprocessor():
     def extract_features(self, data, sample_rate):
         '''Extracts the features ZCR, Chroma_stft, MFCC, RMS value and 
             Melspectrogram from the given audio sample'''
-        # ZCR
+        
         result = np.array([])
+        # ZCR
         zcr = np.mean(librosa.feature.zero_crossing_rate(y=data).T, axis=0)
         result=np.hstack((result, zcr)) # stacking horizontally
 
@@ -54,12 +58,28 @@ class DataPreprocessor():
         # MelSpectogram
         mel = np.mean(librosa.feature.melspectrogram(y=data, sr=sample_rate).T, axis=0)
         result = np.hstack((result, mel)) # stacking horizontally
-        
+
         return result
 
+    def extract_mfcc(self, path, augment_features=False):
+        mfccs = list()
+        data, sample_rate = librosa.load(path)
+        mfccs.append(librosa.feature.mfcc(y=data, sr=sample_rate, n_mfcc=13, n_fft=2048, hop_length=512).T)
+
+        if augment_features:
+            # data with noise
+            noise_data = self.noise(data)
+            mfccs.append(librosa.feature.mfcc(y=noise_data, sr=sample_rate, n_mfcc=13, n_fft=2048, hop_length=512).T)
+            
+            # data with stretching and pitching
+            new_data = self.stretch(data)
+            data_stretch_pitch = self.pitch(new_data, sample_rate)
+            mfccs.append(librosa.feature.mfcc(y=data_stretch_pitch, sr=sample_rate, n_mfcc=13, n_fft=2048, hop_length=512).T)
+
+        return mfccs
+
     def get_features(self, path, augment_features=False):
-        # duration and offset are used to take care of the no audio in start and the ending of each audio file.
-        data, sample_rate = librosa.load(path, duration=2.5, offset=0.6)
+        data, sample_rate = librosa.load(path)
         
         # without augmentation
         res1 = self.extract_features(data, sample_rate)
@@ -129,10 +149,34 @@ class DataPreprocessor():
     def split_data(self, X, labels):
         self.x_train, self.x_test, self.y_train, self.y_test = \
             train_test_split(X, labels, random_state=5, shuffle=True, stratify=labels)
-        # print(self.x_train.shape, self.y_train.shape, self.x_test.shape, self.y_test.shape)
     
     def normalize_data(self):
         scaler = StandardScaler()
         self.x_train = scaler.fit_transform(self.x_train)
         self.x_test = scaler.transform(self.x_test)
-        # print(self.x_train.shape, self.y_train.shape, self.x_test.shape, self.y_test.shape)
+
+    def prepare_mfcc_data(self, filename, augment_features=False):
+        mfcc_list = []
+        emotion_list = []
+
+        if Path(filename).is_file():
+            print("This file already exists in the current directory. Reading the data from the pickle file")
+            data = pd.read_pickle(filename)
+        else:        
+            for path, emotion in zip(self.df.Path, self.df.Emotion):
+                mfccs = self.extract_mfcc(path, augment_features)
+                for mfcc in mfccs:
+                    mfcc_list.append(mfcc)
+                    emotion_list.append(emotion)
+            data = pd.DataFrame({'mfcc': mfcc_list, 'emotion': emotion_list})
+            data.to_pickle(filename)
+            
+        # Pad the MFCC data to make it equal length
+        x = np.asarray(data['mfcc'])
+        labels = np.asarray(data["emotion"])
+        x = pad_sequences(x)
+        print(x.shape)
+
+        labels = self.one_hot_encode_data(labels)
+        self.split_data(x, labels)
+        return self.x_train, self.y_train, self.x_test, self.y_test
